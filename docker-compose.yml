@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    networks:
+      - microservices_net
+    volumes:
+      - mongo_data:/data/db  # Persist MongoDB data
+
+  user_service:
+    build:
+      context: ./user  # Path to the 'user' microservice Dockerfile
+      dockerfile: Dockerfile
+    container_name: user_service
+    ports:
+      - "5001:5001"  # Maps to the user's service port
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/user  # MongoDB URI for user service
+      - JWT_SECRET_KEY=123456
+      - USER_MICROSERVICE_URL=http://user_service:5001
+    depends_on:
+      - mongo
+    networks:
+      - microservices_net
+  
+  inventory_service:
+    build:
+      context: ./inventory  # Path to the 'user' microservice Dockerfile
+      dockerfile: Dockerfile
+    container_name: inventory_service
+    ports:
+      - "5000:5000"  # Maps to the user's service port
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/inventory  # MongoDB URI for user service
+      - JWT_SECRET_KEY=123456
+      - USER_MICROSERVICE_URL=http://user_service:5001
+    depends_on:
+      - user_service
+      - mongo
+    networks:
+      - microservices_net
+
+  product_service:
+    build:
+      context: ./product  # Path to the 'user' microservice Dockerfile
+      dockerfile: Dockerfile
+    container_name: product_service
+    ports:
+      - "5002:5002"  # Maps to the user's service port
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/product  # MongoDB URI for user service
+      - JWT_SECRET_KEY=123456
+      - USER_MICROSERVICE_URL=http://user_service:5001
+      - INVENTORY_MICROSERVICE_URL=http://inventory_service:5000
+    depends_on:
+      - inventory_service
+      - user_service
+      - mongo
+    networks:
+      - microservices_net
+
+
+networks:
+  microservices_net:
+    driver: bridge
+
+volumes:
+  mongo_data:
